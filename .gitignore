@@ -1,0 +1,13 @@
+Demo.scala
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+.history
+.cache
+.lib/
+.idea/
+releases/
+.DS_Store
