@@ -1,4 +1,4 @@
-package com.kelt.aws
+package com.github.kperson.aws
 
 import java.text.SimpleDateFormat
 import java.util.{Date, TimeZone}
@@ -9,12 +9,12 @@ import org.asynchttpclient._
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success}
+
 import scala.xml.XML
 
-case class AsyncResponse(status: Int, headers: Map[String, String] = Map.empty, body: Array[Byte] = Array.empty)
+case class S3HttpResponse(status: Int, headers: Map[String, String] = Map.empty, body: Array[Byte] = Array.empty)
 
-case class AWSError(response: AsyncResponse) extends RuntimeException(new String(response.body))
+case class AWSError(response: S3HttpResponse) extends RuntimeException(new String(response.body))
 
 sealed trait StorageClass
 case object Standard extends StorageClass
@@ -23,14 +23,7 @@ case object ReducedRedundancy extends StorageClass
 case object Glacier extends StorageClass
 case class UnknownStorageClass(name: String) extends StorageClass
 
-
-sealed trait CannedACL             //TODO
-sealed trait ServiceSideEncryption //TODO
-
-
-
 case class DirectoryEntry(key: String, size: Long, storageClass: StorageClass, lastModifiedAt: Date)
-
 case class DirectoryListing(nextContinuationToken: Option[String], entries: List[DirectoryEntry])
 
 class S3Client(credentials: KeyAndSecret, region: String) {
@@ -42,17 +35,27 @@ class S3Client(credentials: KeyAndSecret, region: String) {
   val listDateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'")
   listDateFormatter.setTimeZone(TimeZone.getTimeZone("GMT"))
 
+  /**
+    * Puts a object into a bucket
+    *
+    * @param bucket the name of the bucket
+    * @param key the name of the key
+    * @param value
+    * @param contentType the content type of the data (defaults to application/octet-stream)
+    * @param storageClass the S3 storage class
+    * @return a future of a async response
+    */
   def put(
     bucket: String,
     key: String,
     value: Array[Byte],
-    mimeType:String = "application/octet-stream",
-    storageCLass: StorageClass = Standard
-   ): Future[Any] = {
+    contentType: String = "application/octet-stream",
+    storageClass: StorageClass = Standard
+   ): Future[S3HttpResponse] = {
     val host = s"$bucket.s3.amazonaws.com"
     val path = if(key.startsWith("/")) key else "/" + key
 
-    val storageClassHeaderValue = storageCLass match {
+    val storageClassHeaderValue = storageClass match {
       case Standard => "STANDARD"
       case StandardInfrequentAccess => "STANDARD_IA"
       case ReducedRedundancy => "REDUCED_REDUNDANCY"
@@ -67,7 +70,7 @@ class S3Client(credentials: KeyAndSecret, region: String) {
       "PUT",
       path,
       Map(
-        "Content-Type" -> mimeType,
+        "Content-Type" -> contentType,
         "Host" -> host,
         "x-amz-storage-class" -> storageClassHeaderValue
       ),
@@ -86,10 +89,10 @@ class S3Client(credentials: KeyAndSecret, region: String) {
     * Deletes a object from a bucket
     *
     * @param bucket the name of the bucket
-    * @param key the nname of the key
+    * @param key the name of the key
     * @return a future of a async response
     */
-  def delete(bucket: String, key: String): Future[Any] = {
+  def delete(bucket: String, key: String): Future[S3HttpResponse] = {
     val host = s"$bucket.s3.amazonaws.com"
     val path = if(key.startsWith("/")) key else "/" + key
 
@@ -118,7 +121,7 @@ class S3Client(credentials: KeyAndSecret, region: String) {
     * @param key the name of the key
     * @return a future of a async response
     */
-  def get(bucket: String, key: String): Future[AsyncResponse] = {
+  def get(bucket: String, key: String): Future[S3HttpResponse] = {
     val host = s"$bucket.s3.amazonaws.com"
     val path = if(key.startsWith("/")) key else "/" + key
 
@@ -209,8 +212,8 @@ object S3Client {
 
   implicit class HttpClientExtension(self: AsyncHttpClient) {
 
-    def future(builder: RequestBuilder, signing: Signing): Future[AsyncResponse] = {
-      val promise = Promise[AsyncResponse]()
+    def future(builder: RequestBuilder, signing: Signing): Future[S3HttpResponse] = {
+      val promise = Promise[S3HttpResponse]()
       signing.headers.foreach { case (k, v) =>
         if(k.toLowerCase != "host") {
           builder.setHeader(k, v)
@@ -221,7 +224,7 @@ object S3Client {
       }
       self.executeRequest(builder.build(), new AsyncHandler[Int] {
 
-        private var response = AsyncResponse(-1)
+        private var response = S3HttpResponse(-1)
 
         def onStatusReceived(responseStatus: HttpResponseStatus): AsyncHandler.State =  {
           response = response.copy(status = responseStatus.getStatusCode)
@@ -243,21 +246,17 @@ object S3Client {
         }
 
         def onCompleted(): Int = {
-          if(!promise.isCompleted) {
-            if(response.status < 400) {
-              promise.complete(Success(response))
-            }
-            else {
-              promise.complete(Failure(AWSError(response)))
-            }
+          if(response.status < 400) {
+            promise.trySuccess(response)
+          }
+          else {
+            promise.tryFailure(AWSError(response))
           }
           response.status
         }
 
         def onThrowable(t: Throwable) {
-          if(!promise.isCompleted) {
-            promise.complete(Failure(t))
-          }
+          promise.tryFailure(t)
         }
 
       })

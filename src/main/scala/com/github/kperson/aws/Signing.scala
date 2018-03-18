@@ -1,13 +1,13 @@
-package com.kelt.aws
+package com.github.kperson.aws
 
-import java.security.MessageDigest
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.TimeZone
-
+import java.util.{Date, TimeZone}
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+
+sealed trait S3Payload
 
 case class KeyAndSecret(key: String, secret: String)
 
@@ -25,7 +25,10 @@ case class Signing(
 
   val payloadHash = Signing.toHex(Signing.SHA256(payload))
   val encodeURI = Signing.uriEncode(canonicalURI, false)
-  val headersWithoutSignature = headersToSign ++ Map("x-amz-content-sha256" -> payloadHash, "x-amz-date" -> Signing.longDateFormatter.format(date))
+  val headersWithoutSignature = headersToSign ++ Map(
+    "x-amz-content-sha256" -> payloadHash,
+    "x-amz-date" -> Signing.longDateFormatter.format(date)
+  )
 
   def sortedHeaderKeys = headersWithoutSignature.keys.toList.sortWith { (kOne, kTwo) => kOne.toLowerCase < kTwo.toLowerCase }
 
