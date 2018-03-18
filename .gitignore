@@ -1,4 +1,5 @@
 Demo.scala
+Demo.txt
 dist/*
 target/
 lib_managed/
@@ -11,3 +12,4 @@ project/plugins/project/
 .idea/
 releases/
 .DS_Store
+.credentials

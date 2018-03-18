@@ -13,7 +13,7 @@ case class KeyAndSecret(key: String, secret: String)
 
 case class Signing(
   service: String,
-  credentials: KeyAndSecret,
+  credentials: Option[KeyAndSecret],
   region: String,
   httpMethod: String,
   canonicalURI: String,
@@ -73,22 +73,28 @@ case class Signing(
 
   }
 
-  def signature = {
-    val kSecret = (Signing.signingVersion +  credentials.secret).getBytes(StandardCharsets.UTF_8)
-    val kDate = Signing.hmacSHA256(Signing.shortDateFormatter.format(date), kSecret)
-    val kRegion = Signing.hmacSHA256(region, kDate)
-    val kService = Signing.hmacSHA256(service, kRegion)
-    val kSigning = Signing.hmacSHA256(s"${Signing.signingVersion.toLowerCase}_request", kService)
-    Signing.toHex(Signing.hmacSHA256(stringToSign, kSigning))
+  def signature: Option[String] = {
+    credentials.map { c =>
+      val kSecret = (Signing.signingVersion + c.secret).getBytes(StandardCharsets.UTF_8)
+      val kDate = Signing.hmacSHA256(Signing.shortDateFormatter.format(date), kSecret)
+      val kRegion = Signing.hmacSHA256(region, kDate)
+      val kService = Signing.hmacSHA256(service, kRegion)
+      val kSigning = Signing.hmacSHA256(s"${Signing.signingVersion.toLowerCase}_request", kService)
+      Signing.toHex(Signing.hmacSHA256(stringToSign, kSigning))
+    }
   }
 
-  def authorizationHeader = {
-    val sortedHeadersDelimited = sortedHeaderKeys.map { _.toLowerCase }.mkString(";")
-    s"${Signing.signingVersion}-${Signing.signingAlgorithm} Credential=${credentials.key}/${Signing.shortDateFormatter.format(date) }/${region}/${service}/${Signing.signingVersion.toLowerCase}_request,SignedHeaders=${sortedHeadersDelimited},Signature=${signature}"
+  def authorizationHeader: Option[String] = {
+    credentials.map { c =>
+      val sortedHeadersDelimited = sortedHeaderKeys.map { _.toLowerCase }.mkString(";")
+      s"${Signing.signingVersion}-${Signing.signingAlgorithm} Credential=${c.key}/${Signing.shortDateFormatter.format(date)}/${region}/${service}/${Signing.signingVersion.toLowerCase}_request,SignedHeaders=${sortedHeadersDelimited},Signature=${signature.get}"
+    }
   }
 
-  def headers = {
-    headersWithoutSignature ++ Map("Authorization" -> authorizationHeader)
+  def headers: Map[String, String] = {
+    authorizationHeader.map { a =>
+      headersWithoutSignature ++ Map("Authorization" -> a)
+    }.getOrElse(headersWithoutSignature)
   }
 
 }

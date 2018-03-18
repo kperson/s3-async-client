@@ -26,7 +26,7 @@ case class UnknownStorageClass(name: String) extends StorageClass
 case class DirectoryEntry(key: String, size: Long, storageClass: StorageClass, lastModifiedAt: Date)
 case class DirectoryListing(nextContinuationToken: Option[String], entries: List[DirectoryEntry])
 
-class S3Client(credentials: KeyAndSecret, region: String) {
+class S3Client(credentials: Option[KeyAndSecret], region: String) {
 
   import S3Client._
 

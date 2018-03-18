@@ -21,14 +21,16 @@ lazy val `s3-async-client` = (project in file(".")).
             url("https://github.com/kperson")
         )
     ),
+    credentials += Credentials(new File(".credentials")),
     licenses += ("MIT License", url("http://opensource.org/licenses/MIT")),
     publishMavenStyle := true,
+    pgpReadOnly := false,
     publishTo := Some (
       if (isSnapshot.value) {
         Opts.resolver.sonatypeSnapshots
       }
       else {
-          Opts.resolver.sonatypeStaging
+        Opts.resolver.sonatypeStaging
       }
     )
   )
