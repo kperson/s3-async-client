@@ -3,7 +3,7 @@
 lazy val `s3-async-client` = (project in file(".")).
   settings(
     organization := "com.github.kperson",
-    version := "1.0.0",
+    version := "1.1.1",
     scalaVersion := "2.11.12",
     crossScalaVersions := Seq("2.11.12", "2.12.4"),
     publishTo := Some(Resolver.file("file",  new File("releases"))),
