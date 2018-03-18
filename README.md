@@ -7,7 +7,7 @@ An async S3 client for scala built on [AsyncHttpClient](https://github.com/Async
 import com.github.kperson.aws._
 
 val credentials = Some(KeyAndSecret("MY_AWS_KEY", "MY_AWS_SECRET"))
-//use None for KeyAndSecret if IAM permission handle authorization or if you desire anonymous mode
+//use None for credentials if IAM permission handle authorization or if you desire anonymous mode
 
 val region = "us-east-1"
 val client = new S3Client(credentials, region)
