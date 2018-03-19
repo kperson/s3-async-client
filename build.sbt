@@ -8,7 +8,7 @@ lazy val `s3-async-client` = (project in file(".")).
     crossScalaVersions := Seq("2.11.12", "2.12.4"),
     publishTo := Some(Resolver.file("file",  new File("releases"))),
     libraryDependencies ++= Seq(
-        "org.asynchttpclient"     % "async-http-client" % "2.4.3",
+        "org.asynchttpclient"     % "async-http-client" % "2.4.4",
         "org.scala-lang.modules" %% "scala-xml"         % "1.1.0"
     ),
     homepage := Some(url("https://github.com/kperson/s3-scala-async")),

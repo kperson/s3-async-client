@@ -13,3 +13,4 @@ project/plugins/project/
 releases/
 .DS_Store
 .credentials
+publish.sh
